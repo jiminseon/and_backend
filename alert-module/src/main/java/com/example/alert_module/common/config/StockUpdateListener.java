@@ -16,9 +16,14 @@ public class StockUpdateListener implements MessageListener {
 
     @Override
     public void onMessage(Message message, byte[] pattern) {
-        String stockCode = new String(message.getBody()).replace("\"", ""); // 🔹 따옴표 제거
+        String stockCode = new String(message.getBody()).replace("\"", "");
         log.info("📡 [SUBSCRIBE] Received stock update: {}", stockCode);
-        alertDetectService.detectForStock(stockCode);
+
+        try {
+            alertDetectService.detectForStock(stockCode);
+        } catch (Exception e) {
+            log.error("❌ [SUBSCRIBE] stockCode={} 처리 중 예외 발생", stockCode, e);
+        }
     }
 }
 

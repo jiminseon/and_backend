@@ -42,16 +42,15 @@ public class AlertDetectService {
 
             log.info("원래 상태 - alert : {} , isTriggeredNow : {}",alert.getIsTriggered(), isTriggeredNow);
 
-            if (alert.getIsTriggered() && !isTriggeredNow) {
-                log.info("조건 벗어남.");
+            boolean before = Boolean.TRUE.equals(alert.getIsTriggered());
+
+            if (before && !isTriggeredNow) {
                 alert.setIsTriggered(false);
+                log.info("🔄 [{}] alertId={} trigger 상태 변경 (true -> false)", stockCode, alert.getId());
                 eventPublisher.publish(alert, "COMPANY", stockCode);
-            } else if (!alert.getIsTriggered() && isTriggeredNow) {
+            } else if (!before && isTriggeredNow) {
                 alert.setIsTriggered(true);
-                log.info("조건 만족함.");
-                log.info("🚀 [{}] alertId={} trigger 상태 변경 ({} → true)",
-                        stockCode, alert.getId(),
-                        alert.getIsTriggered() ? "false" : "true");
+                log.info("🔄 [{}] alertId={} trigger 상태 변경 (false -> true)", stockCode, alert.getId());
                 eventPublisher.publish(alert, "COMPANY", stockCode);
             }
         }

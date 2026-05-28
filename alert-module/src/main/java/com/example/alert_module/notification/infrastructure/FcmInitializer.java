@@ -6,6 +6,7 @@ import com.google.firebase.FirebaseOptions;
 import jakarta.annotation.PostConstruct;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
 import java.io.File;
@@ -14,6 +15,7 @@ import java.io.InputStream;
 
 @Slf4j
 @Component
+@ConditionalOnProperty(name = "alert.fcm.mode", havingValue = "real", matchIfMissing = true)
 public class FcmInitializer {
 
     @Value("${fcm.firebase.config.path}")
@@ -25,7 +27,7 @@ public class FcmInitializer {
             File file = new File(firebaseConfigPath);
 
             if (!file.exists()) {
-                log.error("❌ Firebase config file not found at path: {}", file.getAbsolutePath());
+                log.error("File not found at path: {}", file.getAbsolutePath());
                 return;
             }
 
@@ -36,14 +38,14 @@ public class FcmInitializer {
 
                 if (FirebaseApp.getApps().isEmpty()) {
                     FirebaseApp.initializeApp(options);
-                    log.info("✅ Firebase app initialized successfully using file: {}", file.getAbsolutePath());
+                    log.info("Firebase app initialized success: {}", file.getAbsolutePath());
                 } else {
-                    log.info("⚠️ Firebase app already initialized.");
+                    log.info("Firebase app already initialized.");
                 }
             }
 
         } catch (Exception e) {
-            log.error("❌ Error initializing Firebase app", e);
+            log.error("Error initializing Firebase app", e);
         }
     }
 }

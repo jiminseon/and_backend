@@ -1,17 +1,22 @@
 package com.example.alert_module.notification.service;
 
 import com.example.alert_module.notification.dto.PushMessage;
-import com.google.firebase.messaging.*;
+import com.example.alert_module.notification.infrastructure.FcmMulticastResult;
+import com.example.alert_module.notification.infrastructure.FcmSendFailure;
+import com.example.alert_module.notification.infrastructure.FcmSender;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.stream.Collectors;
 
 @Slf4j
 @Service
+@RequiredArgsConstructor
 public class NotificationService {
+
+    private final FcmSender fcmSender;
 
     public void sendAll(List<String> tokens, PushMessage message) {
         if (tokens == null || tokens.isEmpty()) {
@@ -24,65 +29,54 @@ public class NotificationService {
         int attempt = 1;
 
         while (attempt <= maxAttempts && !targets.isEmpty()) {
-            MulticastMessage multicastMessage = MulticastMessage.builder()
-                    .addAllTokens(targets)
-                    .setNotification(Notification.builder()
-                            .setTitle(message.title())
-                            .setBody(message.body())
-                            .build())
-                    .putData("title", message.title())
-                    .putData("body", message.body())
-                    .build();
+            FcmMulticastResult response = fcmSender.sendMulticast(targets, message);
+            log.info("📊 [FCM 전송 결과 - 시도 {}회차] 전체={}, 성공={}, 실패={}",
+                    attempt, targets.size(), response.successCount(), response.failureCount());
 
-            try {
-                BatchResponse response = FirebaseMessaging.getInstance().sendEachForMulticast(multicastMessage);
-                int success = response.getSuccessCount();
-                int failure = response.getFailureCount();
-                log.info("📊 [FCM 전송 결과 - 시도 {}회차] 전체={}, 성공={}, 실패={}", attempt, targets.size(), success, failure);
-
-                List<String> retryTokens = new ArrayList<>();
-
-                List<SendResponse> responses = response.getResponses();
-                for (int i = 0; i < responses.size(); i++) {
-                    SendResponse sendResponse = responses.get(i);
-                    String token = targets.get(i);
-
-                    if (!sendResponse.isSuccessful()) {
-                        FirebaseMessagingException ex = (FirebaseMessagingException) sendResponse.getException();
-                        MessagingErrorCode code = ex.getMessagingErrorCode();
-
-                        // 🔁 서버 오류 or 네트워크 불안정 → 재시도 대상
-                        if (code == MessagingErrorCode.INTERNAL || code == MessagingErrorCode.UNAVAILABLE) {
-                            log.warn("🔁 [FCM 재시도 대상] token={}, error={}", token, code);
-                            retryTokens.add(token);
-                        }
-
-                        // ⚠️ 인증/설정 오류 → 서버 점검 필요
-                        else if (code == MessagingErrorCode.THIRD_PARTY_AUTH_ERROR || code == MessagingErrorCode.SENDER_ID_MISMATCH) {
-                            log.error("⚠️ [FCM 인증/서버 설정 문제] token={}, error={}", token, code);
-                        }
-                    }
+            List<String> retryTokens = new ArrayList<>();
+            for (FcmSendFailure failure : response.failures()) {
+                if (failure.retryable()) {
+                    log.warn("🔁 [FCM 재시도 대상] token={}, error={}", failure.token(), failure.errorCode());
+                    retryTokens.add(failure.token());
+                } else {
+                    log.error("⚠️ [FCM 재시도 제외] token={}, error={}", failure.token(), failure.errorCode());
                 }
+            }
 
-                // ✅ 모두 성공했으면 종료
-                if (retryTokens.isEmpty()) {
-                    log.info("✅ [FCM 전송 완료] 시도 {}회차에 전체 성공", attempt);
-                    return;
-                }
-
-                // 🔁 실패한 토큰만 다시 시도
-                targets = retryTokens;
-                attempt++;
-
-            } catch (FirebaseMessagingException e) {
-                log.error("❌ [FCM 전송 중 예외] attempt={}, errorCode={}, message={}", attempt, e.getMessagingErrorCode(), e.getMessage());
+            if (retryTokens.isEmpty()) {
+                log.info("✅ [FCM 전송 완료] 시도 {}회차에 처리 완료", attempt);
                 return;
             }
+
+            targets = retryTokens;
+            attempt++;
         }
 
         if (!targets.isEmpty()) {
             log.error("❌ [FCM 전송 최종 실패] 실패 토큰 개수={}", targets.size());
         }
+    }
+
+    public int sendEach(List<String> tokens, PushMessage message) {
+        if (tokens == null || tokens.isEmpty()) {
+            log.warn("⚠️ FCM 토큰 없음, 단건 반복 전송 중단");
+            return 0;
+        }
+
+        int successCount = 0;
+        for (String token : tokens) {
+            if (token == null || token.isBlank()) {
+                continue;
+            }
+
+            String response = fcmSender.send(token, message);
+            if (response != null && !response.isBlank()) {
+                successCount++;
+            }
+        }
+
+        log.info("📊 [FCM 단건 반복 전송 완료] 전체={}, 성공={}", tokens.size(), successCount);
+        return successCount;
     }
 
 
@@ -92,22 +86,7 @@ public class NotificationService {
             return;
         }
 
-        Message fcmMessage = Message.builder()
-                .setToken(token)
-                .setNotification(Notification.builder()
-                        .setTitle(message.title())
-                        .setBody(message.body())
-                        .build())
-                .putData("title", message.title())
-                .putData("body", message.body())
-                .build();
-
-        try {
-            String response = FirebaseMessaging.getInstance().send(fcmMessage);
-            log.info("✅ [단일 FCM 전송 성공] {}", response);
-        } catch (FirebaseMessagingException e) {
-            log.error("❌ [단일 FCM 전송 실패] code={}, msg={}",
-                    e.getErrorCode(), e.getMessage());
-        }
+        String response = fcmSender.send(token, message);
+        log.info("✅ [단일 FCM 전송 완료] {}", response);
     }
 }

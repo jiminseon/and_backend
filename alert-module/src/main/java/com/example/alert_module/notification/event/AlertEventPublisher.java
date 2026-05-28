@@ -4,10 +4,12 @@ import com.example.alert_module.management.entity.Alert;
 import com.example.alert_module.management.repository.CompanyRepository;
 import com.example.alert_module.notification.dto.AlertConditionDto;
 import com.example.alert_module.notification.dto.AlertEvent;
+import com.example.alert_module.notification.service.PushService;
 import com.example.common_service.config.RabbitMQConfig;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
@@ -22,6 +24,10 @@ public class AlertEventPublisher {
 
     private final RabbitTemplate rabbitTemplate;
     private final CompanyRepository companyRepository;
+    private final PushService pushService;
+
+    @Value("${alert.notification.dispatch-mode:rabbitmq}")
+    private String dispatchMode;
 
 
     public void publish(Alert alert, String alertType, String stockCode) {
@@ -60,6 +66,16 @@ public class AlertEventPublisher {
             case "COMPANY" -> RabbitMQConfig.ALERT_COMPANY_ROUTING_KEY;
             default -> RabbitMQConfig.ALERT_COMPANY_ROUTING_KEY;
         };
+
+        if ("direct".equalsIgnoreCase(dispatchMode)) {
+            log.info("📨 [Direct Dispatch] alertType={}, event={}", alertType, event);
+            if ("CONDITION".equalsIgnoreCase(alertType)) {
+                pushService.sendCondition(event);
+            } else {
+                pushService.send(event);
+            }
+            return;
+        }
 
         log.info("""
         📤 [RabbitMQ Publish]

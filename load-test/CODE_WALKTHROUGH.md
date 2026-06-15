@@ -434,6 +434,18 @@ rabbitTemplate.convertAndSend(
 
 이 코드가 실험의 핵심입니다.
 
+Queue는 `RabbitMQConfig`에서 Quorum Queue로 선언합니다.
+
+```java
+QueueBuilder.durable(ALERT_COMPANY_QUEUE)
+        .quorum()
+        .build();
+```
+
+`quorum()`은 queue 선언 시 `x-queue-type=quorum` 옵션을 적용합니다. 이를 통해 RabbitMQ 클러스터 환경에서 queue leader와 replica를 기반으로 메시지를 복제할 수 있어, classic queue보다 노드 장애 시 메시지 내구성을 강화할 수 있습니다.
+
+단, 이미 같은 이름의 classic queue가 만들어져 있으면 type을 바꿀 수 없으므로 기존 queue를 삭제하고 다시 생성해야 합니다.
+
 같은 API 요청과 같은 DB/Redis 데이터에서 아래 두 가지 방식만 바꿔 비교할 수 있습니다.
 
 ```bash

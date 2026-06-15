@@ -380,6 +380,8 @@ alert.company.queue
 alert.condition.queue
 ```
 
+이 프로젝트의 queue는 `QueueBuilder.durable(...).quorum()`으로 선언되어 Quorum Queue로 생성됩니다. RabbitMQ Management의 queue 상세 화면에서 `Type`이 `quorum`인지 확인하세요.
+
 볼 지표:
 
 | 지표 | 의미 |
@@ -394,6 +396,24 @@ RabbitMQ 방식에서 `Ready`가 계속 증가하면 consumer 처리량이 publi
 이 경우 포트폴리오 해석은 이렇게 할 수 있습니다.
 
 > RabbitMQ를 적용해 HTTP 응답시간은 줄였지만, consumer 처리량이 부족하면 queue backlog가 증가해 알림 전송 지연이 생긴다. 따라서 비동기화 이후에는 consumer concurrency, prefetch, queue monitoring이 중요하다.
+
+### 7.1 기존 classic queue가 있을 때
+
+RabbitMQ는 이미 생성된 queue의 type을 `classic`에서 `quorum`으로 변경할 수 없습니다. 기존에 같은 이름의 classic queue가 만들어져 있으면 애플리케이션 시작 시 아래와 비슷한 에러가 날 수 있습니다.
+
+```text
+inequivalent arg 'x-queue-type' for queue 'alert.company.queue'
+```
+
+이 경우 기존 queue를 삭제한 뒤 애플리케이션을 다시 실행해야 합니다.
+
+```bash
+docker exec -it $(docker compose -f load-test/docker-compose.yml ps -q rabbitmq) rabbitmqctl delete_queue alert.company.queue
+docker exec -it $(docker compose -f load-test/docker-compose.yml ps -q rabbitmq) rabbitmqctl delete_queue alert.condition.queue
+docker exec -it $(docker compose -f load-test/docker-compose.yml ps -q rabbitmq) rabbitmqctl delete_queue alert.test.queue
+```
+
+로컬 테스트 환경이라면 RabbitMQ container volume을 초기화해도 됩니다.
 
 ## 8. nGrinder 결과에서 볼 것
 

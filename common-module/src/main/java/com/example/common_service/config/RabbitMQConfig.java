@@ -82,7 +82,9 @@ public class RabbitMQConfig {
     // 2) 테스트용 큐/바인딩 추가 (같은 exchange 재사용)
     @Bean
     public Queue alertTestQueue() {
-        return new Queue(ALERT_TEST_QUEUE, true);
+        return QueueBuilder.durable(ALERT_TEST_QUEUE)
+                .quorum()
+                .build();
     }
 
     @Bean
@@ -99,12 +101,16 @@ public class RabbitMQConfig {
 
     @Bean
     public Queue alertCompanyQueue() {
-        return new Queue(ALERT_COMPANY_QUEUE, true);
+        return QueueBuilder.durable(ALERT_COMPANY_QUEUE)
+                .quorum()
+                .build();
     }
 
     @Bean
     public Queue alertConditionQueue() {
-        return new Queue(ALERT_CONDITION_QUEUE, true);
+        return QueueBuilder.durable(ALERT_CONDITION_QUEUE)
+                .quorum()
+                .build();
     }
 
 

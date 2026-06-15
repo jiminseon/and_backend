@@ -307,6 +307,8 @@ iterations
 2. `alert.company.queue`
 3. `alert.condition.queue`
 
+queue 상세 화면에서 `Type`이 `quorum`인지 확인합니다. 기존 classic queue가 남아 있으면 애플리케이션 시작 시 queue type 불일치 에러가 발생할 수 있으므로, 기존 queue를 삭제한 뒤 다시 실행해야 합니다.
+
 중요하게 볼 값:
 
 | 항목 | 의미 |

@@ -1,0 +1,34 @@
+spring:
+  application:
+    name: alert-service
+  jpa:
+    open-in-view: false
+  datasource:
+    url: ${ALERT_DB_URL:jdbc:mysql://localhost:3306/and_alert}
+    username: ${ALERT_DB_USERNAME:and}
+    password: ${ALERT_DB_PASSWORD:change-me}
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+  rabbitmq:
+    host: ${RABBITMQ_HOST:localhost}
+    port: ${RABBITMQ_PORT:5672}
+    username: ${RABBITMQ_USERNAME:guest}
+    password: ${RABBITMQ_PASSWORD:guest}
+
+jwt:
+  public-key: ${JWT_PUBLIC_KEY:classpath:keys/public-key.pem}
+  issuer: ${JWT_ISSUER:and-user-service}
+  audience: ${JWT_AUDIENCE:and-services}
+
+fcm:
+  firebase:
+    config:
+      path: ${FIREBASE_CONFIG_PATH:}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus

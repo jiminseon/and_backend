@@ -1,0 +1,30 @@
+spring:
+  application:
+    name: user-service
+  datasource:
+    url: ${USER_DB_URL:jdbc:mysql://localhost:3306/and_user}
+    username: ${USER_DB_USERNAME:and}
+    password: ${USER_DB_PASSWORD:change-me}
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+  rabbitmq:
+    host: ${RABBITMQ_HOST:localhost}
+    port: ${RABBITMQ_PORT:5672}
+    username: ${RABBITMQ_USERNAME:guest}
+    password: ${RABBITMQ_PASSWORD:guest}
+
+jwt:
+  private-key: ${JWT_PRIVATE_KEY:classpath:keys/private-key.pem}
+  public-key: ${JWT_PUBLIC_KEY:classpath:keys/public-key.pem}
+  issuer: ${JWT_ISSUER:and-user-service}
+  audience: ${JWT_AUDIENCE:and-services}
+  access-expiration-time: ${JWT_ACCESS_EXPIRATION_MS:3600000}
+  refresh-expiration-time: ${JWT_REFRESH_EXPIRATION_MS:1209600000}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus

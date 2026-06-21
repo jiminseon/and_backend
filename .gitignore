@@ -1,6 +1,8 @@
 HELP.md
 .gradle
 build/
+.DS_Store
+**/.DS_Store
 !gradle/wrapper/gradle-wrapper.jar
 !**/src/main/**/build/
 !**/src/test/**/build/
@@ -40,7 +42,12 @@ out/
 ### application.properties ##
 **/application.yml
 **/application.properties
+!**/application-example.yml
+!**/application-test.yml
 
 .env
 
 **/*.json
+!**/src/test/resources/**/*.json
+**/keys/*.pem
+.secrets/

@@ -1,0 +1,30 @@
+package com.example.alert_module.evaluation.evaluator.impl;
+
+import com.example.alert_module.evaluation.evaluator.ConditionEvaluator;
+import com.example.alert_module.evaluation.evaluator.type.ConditionType;
+import com.example.alert_module.evaluation.evaluator.type.ConditionTypeMapping;
+import com.example.alert_module.management.entity.AlertConditionManager;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Component;
+
+import java.util.Map;
+
+@Slf4j
+@ConditionTypeMapping(ConditionType.SMA_50_DOWN)
+@Component
+public class SMA50DownEvaluator implements ConditionEvaluator {
+
+    @Override
+    public boolean evaluate(AlertConditionManager manager, Map<String, Double> metrics) {
+        Double sma50 = metrics.get("sma50");
+        Double threshold = manager.getThreshold();
+        if (sma50 == null || threshold == null) return false;
+
+        boolean ok = sma50 >= threshold;
+        log.info("[SMA_50_DOWN] alertId={} stock={} sma50={} threshold={} → {}",
+                manager.getAlert().getUserId(),
+                manager.getAlert().getStockCode(),
+                String.format("%.2f", sma50), String.format("%.2f", threshold), ok ? "충족" : "미충족");
+        return ok;
+    }
+}

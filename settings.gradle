@@ -2,5 +2,9 @@ rootProject.name = 'and-backend'
 include 'data-process-module'
 include 'user-module'
 include 'alert-module'
-include 'trade-module'
 include 'common-module'
+
+project(':data-process-module').projectDir = file('services/market-data-service')
+project(':user-module').projectDir = file('services/user-service')
+project(':alert-module').projectDir = file('services/alert-service')
+project(':common-module').projectDir = file('libraries/common')

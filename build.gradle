@@ -1,29 +1,67 @@
 plugins {
-	id 'java'
-	id 'org.springframework.boot' version '3.5.6'
-	id 'io.spring.dependency-management' version '1.1.7'
+	id 'org.springframework.boot' version '3.5.6' apply false
+	id 'io.spring.dependency-management' version '1.1.7' apply false
 }
 
-repositories {
-	mavenCentral()
+tasks.register('verifyArchitecture') {
+	group = 'verification'
+	description = 'Checks service dependency boundaries that must hold for independent deployment.'
+
+	doLast {
+		def violations = []
+		def rules = [
+			'services/alert-service'      : ['com.example.user_module', 'com.example.data_process_module'],
+			'services/user-service'       : ['com.example.alert_module', 'com.example.data_process_module'],
+			'services/market-data-service': ['com.example.alert_module', 'com.example.user_module'],
+			'libraries/common'            : ['com.example.alert_module', 'com.example.user_module', 'com.example.data_process_module']
+		]
+
+		rules.each { moduleName, forbiddenPackages ->
+			fileTree("${moduleName}/src").matching { include '**/*.java' }.each { source ->
+				def text = source.getText('UTF-8')
+				forbiddenPackages.each { forbidden ->
+					if (text.contains("import ${forbidden}")) {
+						violations << "${source}: imports forbidden service package ${forbidden}"
+					}
+				}
+				if (text.contains('@ComponentScan(basePackages = "com.example")')) {
+					violations << "${source}: scans every service package"
+				}
+			}
+		}
+
+		if (!violations.isEmpty()) {
+			throw new GradleException("MSA architecture violations:\n - " + violations.join('\n - '))
+		}
+	}
 }
 
-allprojects {
+subprojects {
 	group = 'com.example'
 	version = '0.0.1-SNAPSHOT'
-	sourceCompatibility = '17'
 
 	apply plugin: 'java'
-	apply plugin: 'org.springframework.boot'
 	apply plugin: 'io.spring.dependency-management'
+
+	dependencyManagement {
+		imports {
+			mavenBom 'org.springframework.boot:spring-boot-dependencies:3.5.6'
+		}
+	}
+
+	java {
+		toolchain {
+			languageVersion = JavaLanguageVersion.of(17)
+		}
+	}
 
 	repositories {
 		mavenCentral()
 	}
 
 	dependencies {
-		implementation 'org.springframework.boot:spring-boot-starter-web'
-		implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.8.9'
+		annotationProcessor 'org.projectlombok:lombok:1.18.38'
+		compileOnly 'org.projectlombok:lombok:1.18.38'
 		testImplementation 'org.springframework.boot:spring-boot-starter-test'
 		testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 	}
@@ -32,28 +70,77 @@ allprojects {
 		useJUnitPlatform()
 	}
 
+	tasks.named('check') {
+		dependsOn rootProject.tasks.named('verifyArchitecture')
+	}
+
+}
+
+configure([project(':alert-module'), project(':data-process-module'), project(':user-module')]) {
+	apply plugin: 'org.springframework.boot'
+
+	dependencies {
+		implementation 'org.springframework.boot:spring-boot-starter-web'
+		implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
+		implementation 'org.springframework.boot:spring-boot-starter-data-redis'
+		implementation 'org.springframework.boot:spring-boot-starter-amqp'
+		implementation 'org.springframework.boot:spring-boot-starter-actuator'
+		implementation 'io.micrometer:micrometer-registry-prometheus'
+		implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.8.9'
+		runtimeOnly 'com.mysql:mysql-connector-j'
+	}
+}
+
+project(':common-module') {
+	apply plugin: 'java-library'
+
+	dependencies {
+		api 'org.springframework.boot:spring-boot-starter-web'
+		api 'org.springframework.boot:spring-boot-starter-amqp'
+		api 'org.springframework.boot:spring-boot-starter-data-redis'
+		api 'org.springframework.boot:spring-boot-starter-security'
+		api 'org.springframework.security:spring-security-oauth2-resource-server'
+		api 'org.springframework.security:spring-security-oauth2-jose'
+		api 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.8.9'
+		api 'com.fasterxml.jackson.datatype:jackson-datatype-jsr310'
+	}
 }
 
 project(':alert-module') {
 	dependencies {
 		implementation project(':common-module')
+		implementation('com.google.firebase:firebase-admin:9.2.0') {
+			exclude group: 'commons-logging', module: 'commons-logging'
+		}
+		implementation 'org.springframework.boot:spring-boot-starter-security'
+		implementation 'org.springframework.boot:spring-boot-starter-oauth2-resource-server'
+		implementation 'org.springframework.boot:spring-boot-starter-webflux'
+		if (System.getProperty('os.name').toLowerCase().contains('mac')) {
+			runtimeOnly('io.netty:netty-resolver-dns-native-macos') {
+				artifact {
+					classifier = System.getProperty('os.arch') == 'aarch64' ? 'osx-aarch_64' : 'osx-x86_64'
+				}
+			}
+		}
 	}
 }
 
 project(':data-process-module') {
 	dependencies {
 		implementation project(':common-module')
-	}
-}
-
-project(':trade-module') {
-	dependencies {
-		implementation project(':common-module')
+		implementation 'org.springframework.boot:spring-boot-starter-security'
+		implementation 'org.springframework.boot:spring-boot-starter-oauth2-resource-server'
 	}
 }
 
 project(':user-module') {
 	dependencies {
 		implementation project(':common-module')
+		implementation 'org.springframework.boot:spring-boot-starter-security'
+		implementation 'io.jsonwebtoken:jjwt-api:0.11.5'
+		runtimeOnly 'io.jsonwebtoken:jjwt-impl:0.11.5'
+		runtimeOnly 'io.jsonwebtoken:jjwt-jackson:0.11.5'
+		implementation 'org.springframework.boot:spring-boot-starter-oauth2-resource-server'
+		implementation 'org.springframework.security:spring-security-test'
 	}
 }

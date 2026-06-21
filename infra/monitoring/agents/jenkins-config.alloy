@@ -1,0 +1,59 @@
+logging {
+  level  = "info"
+  format = "logfmt"
+}
+
+loki.source.journal "jenkins" {
+  path       = "/var/log/journal"
+  matches    = "_SYSTEMD_UNIT=jenkins.service"
+  max_age    = "24h"
+  labels     = {
+    environment = "ci",
+    host        = "jenkins",
+    service     = "jenkins",
+  }
+  forward_to = [loki.write.monitoring.receiver]
+}
+
+loki.source.file "deployments" {
+  targets = [
+    {
+      __path__   = "/var/lib/jenkins/and-deployments/*.jsonl",
+      environment = "prod",
+      host        = "jenkins",
+      service     = "jenkins-deployment",
+    },
+  ]
+  tail_from_end = false
+  forward_to    = [loki.write.monitoring.receiver]
+
+  file_match {
+    enabled     = true
+    sync_period = "10s"
+  }
+}
+
+loki.source.file "build_logs" {
+  targets = [
+    {
+      __path__   = "/var/lib/jenkins/jobs/**/builds/*/log",
+      environment = "ci",
+      host        = "jenkins",
+      service     = "jenkins-build",
+    },
+  ]
+  tail_from_end = false
+  forward_to    = [loki.write.monitoring.receiver]
+
+  file_match {
+    enabled           = true
+    sync_period       = "30s"
+    ignore_older_than = "24h"
+  }
+}
+
+loki.write "monitoring" {
+  endpoint {
+    url = "http://10.34.96.5:3100/loki/api/v1/push"
+  }
+}

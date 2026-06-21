@@ -1,0 +1,73 @@
+groups:
+  - name: and-backend-availability
+    rules:
+      - alert: ProdServiceDown
+        expr: up{job=~"prod-.*-service"} == 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "{{ $labels.service }} is down"
+          description: "Prometheus has not scraped {{ $labels.service }} for more than 2 minutes."
+
+      - alert: JenkinsDown
+        expr: up{job="jenkins"} == 0
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Jenkins metrics endpoint is down"
+          description: "The Jenkins metrics endpoint has been unreachable for more than 5 minutes."
+
+      - alert: HostExporterDown
+        expr: up{job=~"(prod|jenkins|monitoring)-node"} == 0
+        for: 3m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Node exporter is down on {{ $labels.host }}"
+          description: "Server metrics for {{ $labels.host }} have been unavailable for more than 3 minutes."
+
+  - name: and-backend-resources
+    rules:
+      - alert: HostHighCpu
+        expr: 100 - (avg by (host) (rate(node_cpu_seconds_total{mode="idle"}[5m])) * 100) > 90
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High CPU usage on {{ $labels.host }}"
+          description: "CPU usage has remained above 90 percent for 10 minutes."
+
+      - alert: HostHighMemory
+        expr: (1 - node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes) * 100 > 90
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High memory usage"
+          description: "Available memory has remained below 10 percent for 10 minutes."
+
+      - alert: HostDiskAlmostFull
+        expr: (1 - node_filesystem_avail_bytes{fstype!~"tmpfs|overlay"} / node_filesystem_size_bytes{fstype!~"tmpfs|overlay"}) * 100 > 80
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Disk usage is above 80 percent"
+          description: "Filesystem {{ $labels.mountpoint }} on {{ $labels.host }} is running out of space."
+
+      - alert: ProdHighServerErrorRate
+        expr: |
+          (
+            sum(rate(http_server_requests_seconds_count{job=~"prod-.*-service",status=~"5.."}[5m]))
+            /
+            clamp_min(sum(rate(http_server_requests_seconds_count{job=~"prod-.*-service"}[5m])), 0.001)
+          ) > 0.05
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Production HTTP 5xx rate is above 5 percent"
+          description: "More than 5 percent of production requests have failed for 5 minutes."
+

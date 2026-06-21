@@ -49,5 +49,6 @@ out/
 
 **/*.json
 !**/src/test/resources/**/*.json
+!infra/monitoring/grafana/dashboards/*.json
 **/keys/*.pem
 .secrets/

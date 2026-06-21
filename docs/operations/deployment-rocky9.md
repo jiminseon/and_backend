@@ -121,7 +121,9 @@ GitHub public 저장소를 대상으로 Jenkins Pipeline job을 만들고 저장
 
 ## 롤백
 
-이전 성공 빌드의 Git 커밋 해시를 사용한다.
+Jenkins는 배포 전 현재 이미지 태그를 `/opt/and-backend/.deployed-image-tag`에 보관한다. 새 애플리케이션 이미지 배포, Nginx reload 또는 Health Check가 실패하면 앱 서비스 3개를 이전 태그로 자동 롤백하고 Health Check를 다시 수행한다. 롤백에 성공해도 문제가 있는 신규 배포를 나타내기 위해 Jenkins 빌드는 실패로 남는다.
+
+자동 롤백까지 실패한 경우 이전 성공 빌드의 Git 커밋 해시를 사용해 수동 복구한다.
 
 ```bash
 cd /opt/and-backend
@@ -130,3 +132,5 @@ IMAGE_TAG=<previous-commit-sha> docker compose -f docker-compose.prod.yml up -d 
 ```
 
 현재 `JPA_DDL_AUTO=update`는 빈 DB의 최초 배포를 위한 임시 설정이다. 실제 사용자 데이터를 받기 전에 Flyway 마이그레이션을 추가하고 `validate`로 변경한다.
+
+Prometheus, Grafana, Loki와 배포 로그 수집은 [monitoring.md](monitoring.md)를 따른다.

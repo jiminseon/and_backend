@@ -1,0 +1,39 @@
+name: and-jenkins-monitoring-agent
+
+services:
+  node-exporter:
+    image: prom/node-exporter:v1.9.1
+    restart: unless-stopped
+    command:
+      - --path.rootfs=/host
+      - --collector.filesystem.mount-points-exclude=^/(dev|proc|sys|var/lib/docker/.+|var/lib/containers/storage/.+)($|/)
+    ports:
+      - "10.34.96.4:9100:9100"
+    volumes:
+      - /:/host:ro,rslave
+    security_opt:
+      - label=disable
+    mem_limit: 64m
+
+  alloy:
+    image: grafana/alloy:v1.16.1
+    restart: unless-stopped
+    user: "0:0"
+    command:
+      - run
+      - --server.http.listen-addr=0.0.0.0:12345
+      - --storage.path=/var/lib/alloy/data
+      - /etc/alloy/config.alloy
+    volumes:
+      - ./jenkins-config.alloy:/etc/alloy/config.alloy:ro
+      - /var/log/journal:/var/log/journal:ro
+      - /run/log/journal:/run/log/journal:ro
+      - /var/lib/jenkins/and-deployments:/var/lib/jenkins/and-deployments:ro
+      - /var/lib/jenkins/jobs:/var/lib/jenkins/jobs:ro
+      - alloy-jenkins-data:/var/lib/alloy/data
+    security_opt:
+      - label=disable
+    mem_limit: 192m
+
+volumes:
+  alloy-jenkins-data:

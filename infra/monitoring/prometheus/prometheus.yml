@@ -1,0 +1,61 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    environment: prod
+    project: and-backend
+
+rule_files:
+  - /etc/prometheus/alerts.yml
+
+scrape_configs:
+  - job_name: prometheus
+    static_configs:
+      - targets: ["prometheus:9090"]
+
+  - job_name: monitoring-node
+    static_configs:
+      - targets: ["node-exporter:9100"]
+        labels:
+          host: monitoring
+
+  - job_name: prod-node
+    static_configs:
+      - targets: ["10.34.96.3:9100"]
+        labels:
+          host: prod
+
+  - job_name: jenkins-node
+    static_configs:
+      - targets: ["10.34.96.4:9100"]
+        labels:
+          host: jenkins
+
+  - job_name: prod-user-service
+    metrics_path: /internal/metrics/user
+    static_configs:
+      - targets: ["10.34.96.3:80"]
+        labels:
+          service: user-service
+
+  - job_name: prod-market-data-service
+    metrics_path: /internal/metrics/market-data
+    static_configs:
+      - targets: ["10.34.96.3:80"]
+        labels:
+          service: market-data-service
+
+  - job_name: prod-alert-service
+    metrics_path: /internal/metrics/alert
+    static_configs:
+      - targets: ["10.34.96.3:80"]
+        labels:
+          service: alert-service
+
+  - job_name: jenkins
+    metrics_path: /prometheus/
+    static_configs:
+      - targets: ["10.34.96.4:8080"]
+        labels:
+          service: jenkins
+

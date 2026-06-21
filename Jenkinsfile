@@ -176,6 +176,24 @@ REMOTE_DEPLOY
                     }
                 }
             }
+            post {
+                success {
+                    sh '''
+                        mkdir -p /var/lib/jenkins/and-deployments
+                        printf '{"timestamp":"%s","event":"deployment","environment":"prod","status":"success","git_sha":"%s","build_number":"%s","build_url":"%s"}\n' \
+                          "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$IMAGE_TAG" "$BUILD_NUMBER" "$BUILD_URL" \
+                          >> /var/lib/jenkins/and-deployments/events.jsonl
+                    '''
+                }
+                failure {
+                    sh '''
+                        mkdir -p /var/lib/jenkins/and-deployments
+                        printf '{"timestamp":"%s","event":"deployment","environment":"prod","status":"failure","git_sha":"%s","build_number":"%s","build_url":"%s"}\n' \
+                          "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$IMAGE_TAG" "$BUILD_NUMBER" "$BUILD_URL" \
+                          >> /var/lib/jenkins/and-deployments/events.jsonl
+                    '''
+                }
+            }
         }
     }
 

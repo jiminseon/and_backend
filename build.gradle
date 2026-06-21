@@ -79,6 +79,13 @@ subprojects {
 configure([project(':alert-module'), project(':data-process-module'), project(':user-module')]) {
 	apply plugin: 'org.springframework.boot'
 
+	tasks.named('bootJar') {
+		exclude 'application.yml'
+		exclude 'application.properties'
+		exclude 'firebase/**'
+		exclude 'keys/**'
+	}
+
 	dependencies {
 		implementation 'org.springframework.boot:spring-boot-starter-web'
 		implementation 'org.springframework.boot:spring-boot-starter-data-jpa'

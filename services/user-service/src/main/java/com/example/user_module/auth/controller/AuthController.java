@@ -11,6 +11,7 @@ import com.example.user_module.common.security.jwt.service.RefreshTokenService;
 import com.example.user_module.fcm.service.FcmService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
@@ -32,6 +33,9 @@ public class AuthController {
     private final RefreshTokenService refreshTokenService;
     private final FcmService fcmService;
 
+    @Value("${auth.cookie.secure:true}")
+    private boolean secureCookie;
+
 
     @PostMapping("/signup")
     public ResponseEntity<?> signUp(@Valid @RequestBody AuthReq.signUpReq signUpReq) {
@@ -48,7 +52,7 @@ public class AuthController {
         ResponseCookie cookie = ResponseCookie.from("refreshToken", loginData.refreshToken())
                 .maxAge(14 * 24 * 60 * 60)
                 .path("/")
-                .secure(true)
+                .secure(secureCookie)
                 .httpOnly(true)
                 .build();
 

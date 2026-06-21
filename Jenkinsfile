@@ -26,7 +26,7 @@ pipeline {
 
         stage('Test and package') {
             environment {
-                JAVA_HOME = '/opt/jdk-17'
+                JAVA_HOME = '/usr/lib/jvm/java-17-openjdk'
             }
             steps {
                 sh '''

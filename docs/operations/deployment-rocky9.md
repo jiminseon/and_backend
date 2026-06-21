@@ -45,22 +45,39 @@ swapon /swapfile
 echo '/swapfile none swap sw 0 0' >> /etc/fstab
 ```
 
-Java 17과 Jenkins를 설치한다.
+Jenkins 컨트롤러용 Java 21과 프로젝트 빌드용 Java 17 JDK를 함께 설치한다. Jenkins는 Docker 컨테이너가 아니라 Rocky Linux의 systemd 서비스로 실행한다.
 
 ```bash
-dnf -y install java-17-openjdk-devel git fontconfig
-curl -fsSL https://pkg.jenkins.io/redhat-stable/jenkins.repo -o /etc/yum.repos.d/jenkins.repo
-rpm --import https://pkg.jenkins.io/redhat-stable/jenkins.io-2023.key
+dnf -y install fontconfig java-21-openjdk java-17-openjdk-devel git wget
+wget -O /etc/yum.repos.d/jenkins.repo https://pkg.jenkins.io/rpm-stable/jenkins.repo
+rpm --import https://pkg.jenkins.io/rpm-stable/jenkins.io-2023.key
 dnf -y install jenkins
 usermod -aG docker jenkins
+systemctl daemon-reload
 systemctl enable --now jenkins
 ```
 
-Jenkins 사용자가 Java 17 컴파일러를 볼 수 있는지 확인한다.
+Jenkins 서비스는 Java 21로 실행하고 빌드는 Jenkinsfile이 `/usr/lib/jvm/java-17-openjdk`를 사용한다.
 
 ```bash
+systemctl edit jenkins
+```
+
+편집기에 다음을 입력하고 저장한다.
+
+```ini
+[Service]
+Environment="JENKINS_JAVA_CMD=/usr/lib/jvm/java-21-openjdk/bin/java"
+```
+
+설정을 반영하고 두 Java 버전을 확인한다.
+
+```bash
+systemctl daemon-reload
+systemctl restart jenkins
 sudo -u jenkins java -version
-sudo -u jenkins javac -version
+sudo -u jenkins /usr/lib/jvm/java-17-openjdk/bin/javac -version
+sudo -u jenkins docker version
 ```
 
 Jenkins 설치 후 `Pipeline`, `Git`, `SSH Agent`, `Credentials Binding`, `Workspace Cleanup` 플러그인을 설치한다. Jenkins가 Docker 그룹을 인식하도록 Jenkins를 한 번 재시작한다.

@@ -1,0 +1,9 @@
+CREATE DATABASE IF NOT EXISTS and_user CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+CREATE DATABASE IF NOT EXISTS and_alert CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+CREATE DATABASE IF NOT EXISTS and_market CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+
+GRANT ALL PRIVILEGES ON and_user.* TO 'and'@'%';
+GRANT ALL PRIVILEGES ON and_alert.* TO 'and'@'%';
+GRANT ALL PRIVILEGES ON and_market.* TO 'and'@'%';
+FLUSH PRIVILEGES;
+

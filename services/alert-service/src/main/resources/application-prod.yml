@@ -1,0 +1,53 @@
+server:
+  port: 8083
+  forward-headers-strategy: framework
+
+spring:
+  application:
+    name: alert-service
+  datasource:
+    url: ${ALERT_DB_URL}
+    username: ${DB_USERNAME:and}
+    password: ${DB_PASSWORD}
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: ${JPA_DDL_AUTO:update}
+      naming:
+        physical-strategy: org.hibernate.boot.model.naming.PhysicalNamingStrategyStandardImpl
+    show-sql: false
+  data:
+    redis:
+      host: ${REDIS_HOST:redis}
+      port: ${REDIS_PORT:6379}
+  rabbitmq:
+    host: ${RABBITMQ_HOST:rabbitmq}
+    port: ${RABBITMQ_PORT:5672}
+    username: ${RABBITMQ_USERNAME}
+    password: ${RABBITMQ_PASSWORD}
+
+jwt:
+  public-key: ${JWT_PUBLIC_KEY:file:/run/secrets/jwt/public-key.pem}
+  issuer: ${JWT_ISSUER:and-user-service}
+  audience: ${JWT_AUDIENCE:and-services}
+
+alert:
+  fcm:
+    mode: ${ALERT_FCM_MODE:fake}
+  load-test:
+    enabled: false
+
+fcm:
+  firebase:
+    config:
+      path: ${FIREBASE_CONFIG_PATH:/run/secrets/firebase/firebase-admin.json}
+
+openai:
+  secret-key: ${OPENAI_API_KEY:}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus
+

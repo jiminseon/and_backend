@@ -98,10 +98,80 @@ pipeline {
                             set -x
 
                             ssh -o StrictHostKeyChecking=yes "$PROD_USER@$PROD_HOST" \
-                              "cd /opt/and-backend && IMAGE_TAG='$IMAGE_TAG' docker compose -f docker-compose.prod.yml pull && IMAGE_TAG='$IMAGE_TAG' docker compose -f docker-compose.prod.yml up -d --remove-orphans --wait --wait-timeout 300"
+                              "NEW_TAG='$IMAGE_TAG' bash -s" <<'REMOTE_DEPLOY'
+                                set -Eeuo pipefail
 
-                            ssh -o StrictHostKeyChecking=yes "$PROD_USER@$PROD_HOST" \
-                              'curl --fail --silent http://127.0.0.1/health/user >/dev/null && curl --fail --silent http://127.0.0.1/health/alert >/dev/null && curl --fail --silent http://127.0.0.1/health/market-data >/dev/null'
+                                cd /opt/and-backend
+
+                                COMPOSE_FILE=docker-compose.prod.yml
+                                DEPLOYED_TAG_FILE=.deployed-image-tag
+                                APP_SERVICES=(user-service market-data-service alert-service)
+
+                                check_health() {
+                                    local attempt
+
+                                    for attempt in $(seq 1 12); do
+                                        if curl --fail --silent http://127.0.0.1/health/user >/dev/null \
+                                            && curl --fail --silent http://127.0.0.1/health/alert >/dev/null \
+                                            && curl --fail --silent http://127.0.0.1/health/market-data >/dev/null; then
+                                            return 0
+                                        fi
+
+                                        sleep 5
+                                    done
+
+                                    return 1
+                                }
+
+                                if [ -s "$DEPLOYED_TAG_FILE" ]; then
+                                    PREVIOUS_TAG=$(tr -d '[:space:]' < "$DEPLOYED_TAG_FILE")
+                                else
+                                    USER_CONTAINER=$(docker compose -f "$COMPOSE_FILE" ps -q user-service)
+                                    PREVIOUS_IMAGE=$(docker inspect --format '{{.Config.Image}}' "$USER_CONTAINER")
+                                    PREVIOUS_TAG=${PREVIOUS_IMAGE##*:}
+                                fi
+
+                                if ! printf '%s' "$PREVIOUS_TAG" | grep -Eq '^[0-9a-f]{40}$'; then
+                                    echo "Cannot determine the previous immutable image tag: $PREVIOUS_TAG" >&2
+                                    exit 1
+                                fi
+
+                                printf '%s\n' "$PREVIOUS_TAG" > "$DEPLOYED_TAG_FILE.tmp"
+                                mv "$DEPLOYED_TAG_FILE.tmp" "$DEPLOYED_TAG_FILE"
+
+                                rollback() {
+                                    local deploy_status=$?
+
+                                    trap - ERR
+                                    echo "Deployment failed. Rolling back to $PREVIOUS_TAG" >&2
+
+                                    if IMAGE_TAG="$PREVIOUS_TAG" docker compose -f "$COMPOSE_FILE" pull "${APP_SERVICES[@]}" \
+                                        && IMAGE_TAG="$PREVIOUS_TAG" docker compose -f "$COMPOSE_FILE" up -d --no-deps --wait --wait-timeout 300 "${APP_SERVICES[@]}" \
+                                        && docker compose -f "$COMPOSE_FILE" exec -T nginx nginx -s reload \
+                                        && check_health; then
+                                        printf '%s\n' "$PREVIOUS_TAG" > "$DEPLOYED_TAG_FILE.tmp"
+                                        mv "$DEPLOYED_TAG_FILE.tmp" "$DEPLOYED_TAG_FILE"
+                                        echo "Rollback completed and health checks passed." >&2
+                                    else
+                                        echo "Rollback failed. Manual recovery is required." >&2
+                                    fi
+
+                                    exit "$deploy_status"
+                                }
+
+                                trap rollback ERR
+
+                                IMAGE_TAG="$NEW_TAG" docker compose -f "$COMPOSE_FILE" pull "${APP_SERVICES[@]}"
+                                IMAGE_TAG="$NEW_TAG" docker compose -f "$COMPOSE_FILE" up -d --no-deps --wait --wait-timeout 300 "${APP_SERVICES[@]}"
+                                docker compose -f "$COMPOSE_FILE" exec -T nginx nginx -s reload
+                                check_health
+
+                                printf '%s\n' "$NEW_TAG" > "$DEPLOYED_TAG_FILE.tmp"
+                                mv "$DEPLOYED_TAG_FILE.tmp" "$DEPLOYED_TAG_FILE"
+                                trap - ERR
+
+                                echo "Deployment completed: $NEW_TAG"
+REMOTE_DEPLOY
                         '''
                     }
                 }

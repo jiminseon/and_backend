@@ -48,12 +48,19 @@ echo '/swapfile none swap sw 0 0' >> /etc/fstab
 Java 17과 Jenkins를 설치한다.
 
 ```bash
-dnf -y install java-17-openjdk git fontconfig
+dnf -y install java-17-openjdk-devel git fontconfig
 curl -fsSL https://pkg.jenkins.io/redhat-stable/jenkins.repo -o /etc/yum.repos.d/jenkins.repo
 rpm --import https://pkg.jenkins.io/redhat-stable/jenkins.io-2023.key
 dnf -y install jenkins
 usermod -aG docker jenkins
 systemctl enable --now jenkins
+```
+
+Jenkins 사용자가 Java 17 컴파일러를 볼 수 있는지 확인한다.
+
+```bash
+sudo -u jenkins java -version
+sudo -u jenkins javac -version
 ```
 
 Jenkins 설치 후 `Pipeline`, `Git`, `SSH Agent`, `Credentials Binding`, `Workspace Cleanup` 플러그인을 설치한다. Jenkins가 Docker 그룹을 인식하도록 Jenkins를 한 번 재시작한다.
@@ -106,4 +113,3 @@ IMAGE_TAG=<previous-commit-sha> docker compose -f docker-compose.prod.yml up -d 
 ```
 
 현재 `JPA_DDL_AUTO=update`는 빈 DB의 최초 배포를 위한 임시 설정이다. 실제 사용자 데이터를 받기 전에 Flyway 마이그레이션을 추가하고 `validate`로 변경한다.
-

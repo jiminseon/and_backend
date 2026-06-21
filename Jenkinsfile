@@ -27,6 +27,8 @@ pipeline {
         stage('Test and package') {
             steps {
                 sh '''
+                    java -version
+                    javac -version
                     ./gradlew clean check \
                       :user-module:bootJar \
                       :alert-module:bootJar \

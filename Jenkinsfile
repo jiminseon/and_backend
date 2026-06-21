@@ -25,8 +25,12 @@ pipeline {
         }
 
         stage('Test and package') {
+            environment {
+                JAVA_HOME = '/opt/jdk-17'
+            }
             steps {
                 sh '''
+                    export PATH="$JAVA_HOME/bin:$PATH"
                     java -version
                     javac -version
                     ./gradlew clean check \
